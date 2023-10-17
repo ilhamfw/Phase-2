@@ -12,47 +12,59 @@ type Person struct {
 	Name     string `validate:"required"`
 	Age      int    `validate:"min=18,max=60"`
 	Email    string `validate:"email"`
-	Password string `validate:"minLen=6,maxLen=20"`
+	Password string `validate:"minLen=6"`
 }
 
-func validateStruct(obj interface{}) error {
+func validateStruct(obj interface{}) []string {
 	v := reflect.ValueOf(obj)
+	t := v.Type()
+	var errors []string
+
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		tag := v.Type().Field(i).Tag.Get("validate")
+		tag := t.Field(i).Tag.Get("validate")
+		fieldName := t.Field(i).Name
 
 		switch tag {
 		case "required":
 			if isZero(field) {
-				return fmt.Errorf("Field '%s' is required", v.Type().Field(i).Name)
+				errors = append(errors, fmt.Sprintf("Field '%s' is required", fieldName))
 			}
 		case "min":
-			if err := validateMin(field, tag, v.Type().Field(i).Name); err != nil {
-				return err
+			if err := validateMin(field, tag, fieldName); err != nil {
+				errors = append(errors, err.Error())
 			}
 		case "max":
-			if err := validateMax(field, tag, v.Type().Field(i).Name); err != nil {
-				return err
-			}
-		case "minLen":
-			if err := validateMinLen(field, tag, v.Type().Field(i).Name); err != nil {
-				return err
-			}
-		case "maxLen":
-			if err := validateMaxLen(field, tag, v.Type().Field(i).Name); err != nil {
-				return err
+			if err := validateMax(field, tag, fieldName); err != nil {
+				errors = append(errors, err.Error())
 			}
 		case "email":
-			if err := validateEmail(field, v.Type().Field(i).Name); err != nil {
-				return err
+			if err := validateEmail(field, fieldName); err != nil {
+				errors = append(errors, err.Error())
+			}
+		case "minLen":
+			if err := validateMinLen(field, tag, fieldName); err != nil {
+				errors = append(errors, err.Error())
+			}
+		case "maxLen":
+			if err := validateMaxLen(field, tag, fieldName); err != nil {
+				errors = append(errors, err.Error())
 			}
 		}
 	}
-	return nil
+
+	return errors
 }
 
-func isZero(field reflect.Value) bool {
-	return field.Interface() == reflect.Zero(field.Type()).Interface()
+func isZero(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.String:
+		return v.String() == ""
+	case reflect.Int:
+		return v.Int() == 0
+	default:
+		return false
+	}
 }
 
 func validateMin(field reflect.Value, tag string, fieldName string) error {
@@ -62,10 +74,10 @@ func validateMin(field reflect.Value, tag string, fieldName string) error {
 	}
 
 	if field.Kind() != reflect.Int {
-		return errors.New("Min validation is applicable only to integer fields")
+		return fmt.Errorf("Field '%s' is not an integer and cannot be validated for minimum value", fieldName)
 	}
 
-	if field.Int() < minValue {
+	if int(field.Int()) < int(minValue) {
 		return fmt.Errorf("Field '%s' must be greater than or equal to %d", fieldName, minValue)
 	}
 
@@ -79,11 +91,25 @@ func validateMax(field reflect.Value, tag string, fieldName string) error {
 	}
 
 	if field.Kind() != reflect.Int {
-		return errors.New("Max validation is applicable only to integer fields")
+		return fmt.Errorf("Field '%s' is not an integer and cannot be validated for maximum value", fieldName)
 	}
 
-	if field.Int() > maxValue {
+	if int(field.Int()) > int(maxValue) {
 		return fmt.Errorf("Field '%s' must be less than or equal to %d", fieldName, maxValue)
+	}
+
+	return nil
+}
+
+func validateEmail(field reflect.Value, fieldName string) error {
+	if field.Kind() != reflect.String {
+		return fmt.Errorf("Field '%s' is not a string and cannot be validated for email format", fieldName)
+	}
+
+	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	valid := regexp.MustCompile(emailPattern).MatchString(field.String())
+	if !valid {
+		return fmt.Errorf("Field '%s' has an invalid email format", fieldName)
 	}
 
 	return nil
@@ -96,11 +122,11 @@ func validateMinLen(field reflect.Value, tag string, fieldName string) error {
 	}
 
 	if field.Kind() != reflect.String {
-		return errors.New("MinLen validation is applicable only to string fields")
+		return fmt.Errorf("Field '%s' is not a string and cannot be validated for minimum length", fieldName)
 	}
 
-	if int64(len(field.String())) < minLen {
-		return fmt.Errorf("Field '%s' length must be at least %d characters", fieldName, minLen)
+	if len(field.String()) < int(minLen) {
+		return fmt.Errorf("Field '%s' must have a minimum length of %d", fieldName, minLen)
 	}
 
 	return nil
@@ -113,39 +139,23 @@ func validateMaxLen(field reflect.Value, tag string, fieldName string) error {
 	}
 
 	if field.Kind() != reflect.String {
-		return errors.New("MaxLen validation is applicable only to string fields")
+		return fmt.Errorf("Field '%s' is not a string and cannot be validated for maximum length", fieldName)
 	}
 
-	if int64(len(field.String())) > maxLen {
-		return fmt.Errorf("Field '%s' length must not exceed %d characters", fieldName, maxLen)
-	}
-
-	return nil
-}
-
-func validateEmail(field reflect.Value, fieldName string) error {
-	if field.Kind() != reflect.String {
-		return errors.New("Email validation is applicable only to string fields")
-	}
-
-	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$`
-	match, _ := regexp.MatchString(emailPattern, field.String())
-
-	if !match {
-		return fmt.Errorf("Field '%s' has an invalid email format", fieldName)
+	if len(field.String()) > int(maxLen) {
+		return fmt.Errorf("Field '%s' must have a maximum length of %d", fieldName, maxLen)
 	}
 
 	return nil
 }
 
-
-func getTagValue(tag string) (int64, error) {
+func getTagValue(tag string) (int, error) {
 	tagValue := reflect.StructTag(tag).Get("validate")
 	if tagValue == "" {
 		return 0, errors.New("Tag value not provided")
 	}
 
-	value, err := strconv.ParseInt(tagValue, 10, 64)
+	value, err := strconv.Atoi(tagValue)
 	if err != nil {
 		return 0, fmt.Errorf("Invalid tag value: %s", tagValue)
 	}
@@ -153,35 +163,56 @@ func getTagValue(tag string) (int64, error) {
 	return value, nil
 }
 
-
-
 func main() {
 	p1 := Person{
-		Name:     "John Doe",
-		Age:      25,
-		Email:    "john.doe@example.com",
-		Password: "secret",
+		Name:     "Tanos",
+		Age:      1,
+		Email:    "asal",
+		Password: "qw",
 	}
 
-	err1 := validateStruct(p1)
-	if err1 != nil {
-		fmt.Println("Validation error for p1:", err1)
-	} else {
+	errors1 := validateStruct(p1)
+	if len(errors1) == 0 {
 		fmt.Println("Validation successful for p1.")
+	} else {
+		for _, err := range errors1 {
+			fmt.Println(err)
+		}
 	}
+
+	// errors1 = validateMin(reflect.ValueOf(p1.Age), "min=18", "Age")
+	// if errors1 != nil {
+	// 	fmt.Println(errors1)
+	// }
+
+	// errors2 := validateMax(reflect.ValueOf(p1.Age), "max=60", "Age")
+	// if errors2 != nil {
+	// 	fmt.Println(errors2)
+	// }
+
+	// errors3 := validateMinLen(reflect.ValueOf(p1.Password), "minLen=6", "Password")
+	// if errors3 != nil {
+	// 	fmt.Println(errors3)
+	// }
+
+	// errors4 := validateMaxLen(reflect.ValueOf(p1.Password), "maxLen=12", "Password")
+	// if errors4 != nil {
+	// 	fmt.Println(errors4)
+	// }
 
 	p2 := Person{
-		Name:     "miaw",             // Required field with an empty value
-		Age:      16,             // Age is less than the minimum allowed value (18)
-		Email:    "invalidemail", // Invalid email format
-		Password: "short",        // Password length is less than the minimum allowed (6)
+		Name:     "",
+		Age:      1,
+		Email:    "invalidemail@mail.com",
+		Password: "short",
 	}
 
-	err2 := validateStruct(p2)
-	if err2 != nil {
-		fmt.Println("Validation error for p2:", err2)
-	} else {
+	errors2 := validateStruct(p2)
+	if len(errors2) == 0 {
 		fmt.Println("Validation successful for p2.")
+	} else {
+		for _, err := range errors2 {
+			fmt.Println(err)
+		}
 	}
-
 }
