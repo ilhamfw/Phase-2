@@ -1,0 +1,76 @@
+openapi: 3.0.0
+info:
+  title: Avengers Criminal Reports API
+  description: Aplikasi untuk melaporkan dan mengelola kejadian kriminal oleh Avengers.
+  version: 1.0.0
+
+servers:
+  - url: "http://localhost:8080"
+    description: Development Server
+
+paths:
+  /criminal-reports:
+    post:
+      summary: Membuat Laporan Kejadian Kriminal
+      description: Membuat laporan kejadian kriminal oleh Avengers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriminalReport'
+      responses:
+        '201':
+          description: Laporan Kejadian Kriminal berhasil dibuat
+        '400':
+          description: Permintaan tidak valid
+        '500':
+          description: Terjadi kesalahan server
+
+  '/criminal-reports/{id}':
+    get:
+      summary: Mendapatkan Laporan Kejadian Kriminal Berdasarkan ID.
+      description: Mendapatkan laporan kejadian kriminal oleh Avengers berdasarkan ID.
+      parameters:
+        - name: id
+          in: path
+          description: ID laporan kejadian kriminal yang ingin diambil.
+          required: true
+          schema:
+            type: integer
+    responses:
+        '200':
+          description: Laporan kejadian kriminal berhasil ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CriminalReport'
+        '404':
+          description: Laporan kejadian kriminal tidak ditemukan
+        '500':
+          description: Terjadi kesalahan server
+
+
+
+
+
+
+
+
+
+
+components:
+  schemas:
+    CriminalReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        hero_id:
+          type: integer
+        villain_id:
+          type: integer
+        description:
+          type: string
+        event_time:
+          type: string

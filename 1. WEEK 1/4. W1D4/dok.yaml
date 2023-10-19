@@ -1,0 +1,116 @@
+openapi: 3.0.0
+info:
+  title: Avengers Inventories API
+  description: Aplikasi punya Steve Rogers
+  version: 1.0.0
+  servers:
+    - url: "http://localhost:8080"
+      description: Development Server
+
+components:
+  schemas:
+    Inventory:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+      example:
+        id: 1
+        name: "Nama Inventori"
+        description: "Deskripsi Inventori"
+
+paths:
+  /inventories:
+    get:
+      summary: Mendapatkan Semua Inventori
+      description: Mengambil semua data inventori Avenger.
+      responses:
+        '200':
+          description: Hasil yang berhasil
+          content:
+            application/json:
+              example:
+                message: "Semua inventori Avenger ditemukan."
+
+    post:
+      summary: Membuat Inventori Baru
+      description: Menambahkan data inventori baru ke dalam database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Nama Inventori"
+              description: "Deskripsi Inventori"
+
+  '/inventories/{id}':
+    get:
+      summary: Mendapatkan Inventori Berdasarkan ID
+      description: Mengambil data inventori Avenger berdasarkan ID.
+      parameters:
+        - name: id
+          in: path
+          description: ID inventori yang ingin diambil.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Hasil yang berhasil
+          content:
+            application/json:
+              example:
+                $ref: '#/components/schemas/Inventory'  
+
+    post:
+      summary: Memperbarui Inventori
+      description: Memperbarui data inventori dalam database sesuai dengan ID yang diberikan.
+      parameters:
+        - name: id
+          in: path
+          description: ID inventori yang ingin diperbarui.
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              name: "Nama Inventori yang Diperbarui"
+              description: "Deskripsi Inventori yang Diperbarui"
+
+    delete:
+      summary: Menghapus Inventori
+      description: Menghapus data inventori dalam database sesuai dengan ID yang diberikan.
+      parameters:
+        - name: id
+          in: path
+          description: ID inventori yang ingin dihapus.
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Inventori berhasil dihapus
+
+  /hello:
+    get:
+      summary: Mengembalikan Pesan Sapaan
+      description: Mengembalikan pesan sapaan "Hello, World!".
+      responses:
+        '200':
+          description: Hasil yang berhasil
+          content:
+            application/json:
+              example:
+                message: "Hello, World!"
+
+
+
+
+      
