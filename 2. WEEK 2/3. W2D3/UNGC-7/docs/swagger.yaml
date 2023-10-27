@@ -1,0 +1,46 @@
+definitions:
+  entity.Store:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        type: string
+      id:
+        type: integer
+      password:
+        type: string
+      storeEmail:
+        type: string
+      storeName:
+        type: string
+      storeType:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /Register:
+    post:
+      consumes:
+      - application/json
+      description: Register
+      parameters:
+      - description: Register New User
+        in: body
+        name: store
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Store'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/entity.Store'
+      summary: Register
+      tags:
+      - data user
+swagger: "2.0"
